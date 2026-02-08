@@ -48,8 +48,8 @@ router.post("/verify-login-otp", async (req, res) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false,
-      sameSite: "lax",
+      secure: true, // Required for SameSite=None
+      sameSite: "none", // Required for cross-site cookies
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
