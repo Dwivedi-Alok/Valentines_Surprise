@@ -41,11 +41,10 @@ router.put("/partner", protectRoute, async (req, res) => {
             return res.status(400).json({ error: "You need an active partner to do this" });
         }
 
-        // Identify partner
-        // Identify partner
-        const partnerId = couple.user1._id.toString() === req.user._id.toString()
-            ? couple.user2._id
-            : couple.user1._id;
+        // Identify partner - handle both populated objects and plain IDs
+        const user1Id = couple.user1._id ? couple.user1._id.toString() : couple.user1.toString();
+        const user2Id = couple.user2._id ? couple.user2._id.toString() : couple.user2.toString();
+        const partnerId = user1Id === req.user._id.toString() ? user2Id : user1Id;
 
         // Update partner
         const partner = await User.findByIdAndUpdate(

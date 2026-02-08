@@ -87,9 +87,9 @@ router.delete("/", protectRoute, async (req, res) => {
         let partnerName = null;
 
         if (couple.status === "accepted" && couple.user2) {
-            const partner = couple.user1._id.toString() === req.user._id.toString()
-                ? couple.user2
-                : couple.user1;
+            // Handle both populated objects and plain IDs
+            const user1Id = couple.user1._id ? couple.user1._id.toString() : couple.user1.toString();
+            const partner = user1Id === req.user._id.toString() ? couple.user2 : couple.user1;
 
             if (partner && partner.email) {
                 partnerEmail = partner.email;

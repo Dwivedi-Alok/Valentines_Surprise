@@ -16,9 +16,10 @@ router.get("/", protectRoute, async (req, res) => {
 
         // If couple exists and accepted, get partner's payments too
         if (couple && couple.status === "accepted") {
-            const partnerId = couple.user1._id.toString() === req.user._id.toString()
-                ? couple.user2._id
-                : couple.user1._id;
+            // Handle both populated objects and plain IDs
+            const user1Id = couple.user1._id ? couple.user1._id.toString() : couple.user1.toString();
+            const user2Id = couple.user2._id ? couple.user2._id.toString() : couple.user2.toString();
+            const partnerId = user1Id === req.user._id.toString() ? user2Id : user1Id;
 
             if (partnerId) {
                 partnersPayments = await Payment.find({ user: partnerId }).sort({ createdAt: -1 });

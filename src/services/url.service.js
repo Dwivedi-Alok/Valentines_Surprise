@@ -20,10 +20,10 @@ export const createUrl = async ({ url, title, userId }) => {
         const creator = await User.findById(userId);
         const creatorName = `${creator.first_name} ${creator.last_name || ""}`.trim();
 
-        // Find partner
-        const partnerId = couple.user1._id.toString() === userId.toString()
-            ? couple.user2?._id
-            : couple.user1?._id;
+        // Find partner - handle both populated objects and plain IDs
+        const user1Id = couple.user1._id ? couple.user1._id.toString() : couple.user1.toString();
+        const user2Id = couple.user2?._id ? couple.user2._id.toString() : couple.user2?.toString();
+        const partnerId = user1Id === userId.toString() ? user2Id : user1Id;
 
         if (partnerId) {
             const partner = await User.findById(partnerId);
