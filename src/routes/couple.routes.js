@@ -1,0 +1,143 @@
+import express from "express";
+import Couple from "../models/couple.model.js";
+import User from "../models/user.model.js";
+import { protectRoute } from "../middlewares/auth.middleware.js";
+import { sendPartnerInviteEmail, sendPartnerRemovedEmail } from "../services/mail.service.js";
+
+const router = express.Router();
+
+// Get couple info for current user
+router.get("/", protectRoute, async (req, res) => {
+    try {
+        const couple = await Couple.findByUser(req.user._id);
+
+        if (!couple) {
+            return res.json({ couple: null });
+        }
+
+        res.json({ couple });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Invite partner
+router.post("/invite", protectRoute, async (req, res) => {
+    try {
+        const { email, first_name, last_name } = req.body;
+
+        if (!email || !first_name) {
+            return res.status(400).json({ error: "Email and first name are required" });
+        }
+
+        // Check if user already has a couple
+        const existingCouple = await Couple.findByUser(req.user._id);
+        if (existingCouple) {
+            return res.status(400).json({ error: "You already have a partner" });
+        }
+
+        // Check if inviting yourself
+        if (email.toLowerCase() === req.user.email) {
+            return res.status(400).json({ error: "You cannot invite yourself" });
+        }
+
+        // Check if invited email is already in a couple
+        const invitedUser = await User.findOne({ email: email.toLowerCase() });
+        if (invitedUser) {
+            const invitedCouple = await Couple.findByUser(invitedUser._id);
+            if (invitedCouple) {
+                return res.status(400).json({ error: "This person already has a partner" });
+            }
+        }
+
+        // Create couple with pending status
+        const couple = await Couple.create({
+            user1: req.user._id,
+            invite_email: email.toLowerCase(),
+            invite_first_name: first_name,
+            invite_last_name: last_name || "",
+            status: "pending",
+        });
+
+        // Send invite email
+        const inviterName = `${req.user.first_name} ${req.user.last_name || ""}`.trim();
+        await sendPartnerInviteEmail(email, inviterName, first_name);
+
+        res.json({
+            message: "Invitation sent successfully! 💕",
+            couple: await couple.populate("user1")
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Remove partner / cancel invite
+router.delete("/", protectRoute, async (req, res) => {
+    try {
+        const couple = await Couple.findByUser(req.user._id);
+
+        if (!couple) {
+            return res.status(404).json({ error: "No couple found" });
+        }
+
+        // Get partner info for notification
+        const currentUserName = `${req.user.first_name} ${req.user.last_name || ""}`.trim();
+
+        // Send removal email to partner
+        if (couple.status === "accepted" && couple.user2) {
+            const partner = couple.user1._id.toString() === req.user._id.toString()
+                ? couple.user2
+                : couple.user1;
+
+            if (partner && partner.email) {
+                const partnerName = `${partner.first_name} ${partner.last_name || ""}`.trim();
+                await sendPartnerRemovedEmail(partner.email, partnerName, currentUserName);
+            }
+        } else if (couple.status === "pending" && couple.invite_email) {
+            // Send to pending invite
+            await sendPartnerRemovedEmail(
+                couple.invite_email,
+                couple.invite_first_name,
+                currentUserName
+            );
+        }
+
+        await Couple.deleteOne({ _id: couple._id });
+        res.json({ message: "Partner removed" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Send Kiss
+router.post("/kiss", protectRoute, async (req, res) => {
+    try {
+        const couple = await Couple.findByUser(req.user._id);
+
+        if (!couple || couple.status !== "accepted") {
+            return res.status(400).json({ error: "You need an accepted partner to send a kiss!" });
+        }
+
+        const partnerId = couple.user1.toString() === req.user._id.toString()
+            ? couple.user2
+            : couple.user1;
+
+        const partner = await User.findById(partnerId);
+
+        if (!partner || !partner.email) {
+            return res.status(404).json({ error: "Partner not found" });
+        }
+
+        const senderName = `${req.user.first_name} ${req.user.last_name || ""}`.trim();
+        await import("../services/mail.service.js").then(service =>
+            service.sendKissEmail(partner.email, senderName)
+        );
+
+        res.json({ message: "Kiss sent! 💋" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+export default router;
