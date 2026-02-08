@@ -1,93 +1,100 @@
-import nodemailer from "nodemailer";
+import { SESClient, SendEmailCommand, GetAccountSendingEnabledCommand } from "@aws-sdk/client-ses";
 import * as dotenv from "dotenv";
-import dns from "node:dns";
 import { otpEmailTemplate } from "../template/otp.template.js";
 dotenv.config();
 
-// Custom DNS lookup that forces IPv4
-const customDnsLookup = (hostname, options, callback) => {
-  dns.lookup(hostname, { family: 4 }, (err, address, family) => {
-    callback(err, address, family);
-  });
-};
-
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // true for 465, false for other ports
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+// Initialize SES Client
+const sesClient = new SESClient({
+  region: process.env.AWS_REGION || "ap-south-1",
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
-  family: 4, // Force IPv4
-  dnsLookup: customDnsLookup, // Custom lookup to ensure IPv4
-  /* 
-   * connectionTimeout: 10000, // 10 seconds
-   * greetingTimeout: 10000, 
-   * socketTimeout: 10000, 
-   */
 });
 
-console.log("Nodemailer transporter created with custom IPv4 DNS lookup");
+// Sender email (must be verified in SES)
+const SENDER_EMAIL = process.env.EMAIL_USER;
+const SENDER_NAME = "Your King's";
+
+console.log("AWS SES Client initialized for region:", process.env.AWS_REGION || "ap-south-1");
+
+// Helper function to send email via SES
+const sendEmail = async ({ to, subject, htmlBody }) => {
+  const params = {
+    Source: `"${SENDER_NAME}" <${SENDER_EMAIL}>`,
+    Destination: {
+      ToAddresses: [to],
+    },
+    Message: {
+      Subject: {
+        Data: subject,
+        Charset: "UTF-8",
+      },
+      Body: {
+        Html: {
+          Data: htmlBody,
+          Charset: "UTF-8",
+        },
+      },
+    },
+  };
+
+  const command = new SendEmailCommand(params);
+  const response = await sesClient.send(command);
+  console.log("Email sent successfully. MessageId:", response.MessageId);
+  return response;
+};
 
 // Verify email connection for health check
 export const verifyEmailConnection = async () => {
   try {
-    await transporter.verify();
-    return true;
+    const command = new GetAccountSendingEnabledCommand({});
+    const response = await sesClient.send(command);
+    console.log("SES Account Sending Enabled:", response.Enabled);
+    return response.Enabled !== false; // true if sending is enabled
   } catch (error) {
-    console.error("SMTP verification failed:", error.message);
+    console.error("SES verification failed:", error.message);
     return false;
   }
 };
 
 export const sendOTPEmail = async (email, otp) => {
-  const mailOptions = {
-    from: `"Your King's " <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to: email,
     subject: "Your OTP Code",
-    html: otpEmailTemplate(otp),
-  };
-
-  await transporter.sendMail(mailOptions);
+    htmlBody: otpEmailTemplate(otp),
+  });
 };
 
 export const sendTaskReminderEmail = async (email, taskTitle, taskTime) => {
-  const mailOptions = {
-    from: `"Your King's " <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to: email,
     subject: "Task Reminder: " + taskTitle,
-    html: `
+    htmlBody: `
       <h1>Task Reminder</h1>
       <p>This is a reminder for your task: <strong>${taskTitle}</strong></p>
       <p>Due at: ${new Date(taskTime).toLocaleString()}</p>
       <p>Please complete it on time!</p>
     `,
-  };
-
-  await transporter.sendMail(mailOptions);
+  });
 };
 
 export const sendPartnerInviteEmail = async (email, inviterName, inviteeName) => {
   const { partnerInviteTemplate } = await import("../template/invite.template.js");
 
-  const mailOptions = {
-    from: `"Your King's " <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to: email,
     subject: `💕 ${inviterName} has added you to their heart!`,
-    html: partnerInviteTemplate(inviterName, inviteeName),
-  };
-
-  await transporter.sendMail(mailOptions);
+    htmlBody: partnerInviteTemplate(inviterName, inviteeName),
+  });
 };
 
 // Partner removed notification
 export const sendPartnerRemovedEmail = async (email, partnerName, removedByName) => {
-  const mailOptions = {
-    from: `"Your King's " <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to: email,
     subject: `💔 ${removedByName} has ended your connection`,
-    html: `
+    htmlBody: `
       <!DOCTYPE html>
       <html>
       <body style="margin: 0; padding: 40px 20px; font-family: 'Georgia', serif; background: #FFF8F6;">
@@ -107,9 +114,7 @@ export const sendPartnerRemovedEmail = async (email, partnerName, removedByName)
       </body>
       </html>
     `,
-  };
-
-  await transporter.sendMail(mailOptions);
+  });
 };
 
 // New content notification to partner
@@ -126,11 +131,10 @@ export const sendNewContentEmail = async (email, partnerName, creatorName, conte
   const emoji = emojis[contentType] || '✨';
   const typeLabel = contentType === 'url' ? 'link' : contentType;
 
-  const mailOptions = {
-    from: `"Your King's " <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to: email,
     subject: `${emoji} ${creatorName} added a new ${typeLabel}!`,
-    html: `
+    htmlBody: `
       <!DOCTYPE html>
       <html>
       <body style="margin: 0; padding: 40px 20px; font-family: 'Georgia', serif; background: linear-gradient(135deg, #FFF8F6 0%, #FFEAE6 100%);">
@@ -162,18 +166,15 @@ export const sendNewContentEmail = async (email, partnerName, creatorName, conte
       </body>
       </html>
     `,
-  };
-
-  await transporter.sendMail(mailOptions);
+  });
 };
 
 // Send Kiss Email
 export const sendKissEmail = async (email, senderName) => {
-  const mailOptions = {
-    from: `"Your King's " <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to: email,
     subject: `💋 ${senderName} sent you a kiss!`,
-    html: `
+    htmlBody: `
       <!DOCTYPE html>
       <html>
       <body style="margin: 0; padding: 0; font-family: 'Georgia', serif; background: #FFF0F5;">
@@ -181,7 +182,7 @@ export const sendKissEmail = async (email, senderName) => {
           <tr>
             <td align="center">
               <div style="max-width: 500px; background: white; border-radius: 24px; padding: 40px; box-shadow: 0 8px 32px rgba(255, 105, 180, 0.2); text-align: center;">
-                <div style="font-size: 80px; margin-bottom: 20px; animation: heartbeat 1.5s infinite;">💋</div>
+                <div style="font-size: 80px; margin-bottom: 20px;">💋</div>
                 <h1 style="color: #D63384; margin: 0 0 16px 0; font-size: 28px;">Muah!</h1>
                 <p style="color: #8B4A5A; font-size: 20px; line-height: 1.6; margin: 0;">
                   <strong>${senderName}</strong> is thinking of you and sending lots of love!
@@ -194,7 +195,5 @@ export const sendKissEmail = async (email, senderName) => {
       </body>
       </html>
     `,
-  };
-
-  await transporter.sendMail(mailOptions);
+  });
 };
