@@ -161,8 +161,8 @@ export const resendOtp = async ({ email, type }) => {
 export const logoutUser = async (res) => {
   res.clearCookie("token", {
     httpOnly: true,
-    sameSite: "lax",
-    secure: false,
+    sameSite: "none",
+    secure: true,
   });
 
   return { message: "Logged out successfully" };
