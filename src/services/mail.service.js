@@ -1,7 +1,15 @@
 import nodemailer from "nodemailer";
 import * as dotenv from "dotenv";
+import dns from "node:dns";
 import { otpEmailTemplate } from "../template/otp.template.js";
 dotenv.config();
+
+// Custom DNS lookup that forces IPv4
+const customDnsLookup = (hostname, options, callback) => {
+  dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+    callback(err, address, family);
+  });
+};
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
@@ -12,6 +20,7 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
   family: 4, // Force IPv4
+  dnsLookup: customDnsLookup, // Custom lookup to ensure IPv4
   /* 
    * connectionTimeout: 10000, // 10 seconds
    * greetingTimeout: 10000, 
@@ -19,7 +28,7 @@ const transporter = nodemailer.createTransport({
    */
 });
 
-console.log("Nodemailer transporter created with family: 4 (IPv4 Forced)");
+console.log("Nodemailer transporter created with custom IPv4 DNS lookup");
 
 export const sendOTPEmail = async (email, otp) => {
   const mailOptions = {
