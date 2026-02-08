@@ -116,8 +116,55 @@ io.on("connection", (socket) => {
 });
 
 const port = process.env.PORT || 5000;
-app.get("/health", (req, res) => {
-  res.send("Presigned URL Service is running 🚀");
+const startTime = Date.now();
+
+// Comprehensive Health Check
+app.get("/health", async (req, res) => {
+  const uptimeMs = Date.now() - startTime;
+  const uptimeSeconds = Math.floor(uptimeMs / 1000);
+  const uptimeMinutes = Math.floor(uptimeSeconds / 60);
+  const uptimeHours = Math.floor(uptimeMinutes / 60);
+
+  const health = {
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: {
+      hours: uptimeHours,
+      minutes: uptimeMinutes % 60,
+      seconds: uptimeSeconds % 60,
+      raw_ms: uptimeMs,
+    },
+    services: {
+      database: "unknown",
+      email: "unknown",
+    },
+  };
+
+  // Check MongoDB connection
+  try {
+    const mongoose = await import("mongoose");
+    const dbState = mongoose.default.connection.readyState;
+    // 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+    health.services.database = dbState === 1 ? "connected" : dbState === 2 ? "connecting" : "disconnected";
+  } catch (err) {
+    health.services.database = "error: " + err.message;
+  }
+
+  // Check SMTP connection
+  try {
+    const { verifyEmailConnection } = await import("./src/services/mail.service.js");
+    const smtpStatus = await verifyEmailConnection();
+    health.services.email = smtpStatus ? "connected" : "disconnected";
+  } catch (err) {
+    health.services.email = "error: " + err.message;
+  }
+
+  // Set overall status
+  if (health.services.database !== "connected" || health.services.email !== "connected") {
+    health.status = "degraded";
+  }
+
+  res.json(health);
 });
 
 httpServer.listen(port, () => {

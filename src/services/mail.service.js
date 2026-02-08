@@ -30,6 +30,17 @@ const transporter = nodemailer.createTransport({
 
 console.log("Nodemailer transporter created with custom IPv4 DNS lookup");
 
+// Verify email connection for health check
+export const verifyEmailConnection = async () => {
+  try {
+    await transporter.verify();
+    return true;
+  } catch (error) {
+    console.error("SMTP verification failed:", error.message);
+    return false;
+  }
+};
+
 export const sendOTPEmail = async (email, otp) => {
   const mailOptions = {
     from: `"Your King's " <${process.env.EMAIL_USER}>`,
