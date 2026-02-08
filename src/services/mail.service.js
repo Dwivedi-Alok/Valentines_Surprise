@@ -19,6 +19,8 @@ const transporter = nodemailer.createTransport({
    */
 });
 
+console.log("Nodemailer transporter created with family: 4 (IPv4 Forced)");
+
 export const sendOTPEmail = async (email, otp) => {
   const mailOptions = {
     from: `"Your King's " <${process.env.EMAIL_USER}>`,

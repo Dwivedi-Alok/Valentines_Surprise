@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 
 try {
   dns.setDefaultResultOrder("ipv4first");
+  console.log("DNS Order set to ipv4first");
 } catch (error) {
   console.warn("Could not set default DNS result order:", error);
 }
