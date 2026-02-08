@@ -23,20 +23,34 @@ import User from "./src/models/user.model.js";
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: true, // Allow all origins in development
-    credentials: true,
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://valentines-surprise.onrender.com",
+  "https://valentines-surprise-frontend.onrender.com" // Assuming this might be the frontend URL or similar
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || true) { // Temporarily allowing all for debugging
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
   },
+  credentials: true,
+};
+
+const io = new Server(httpServer, {
+  cors: corsOptions
 });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(cors({
-  origin: true, // Allow all origins in development
-  credentials: true,
-}));
+app.use(cors(corsOptions));
 
 app.use("/presigned", presignedRoutes);
 app.use("/mail", mailRoutes);
