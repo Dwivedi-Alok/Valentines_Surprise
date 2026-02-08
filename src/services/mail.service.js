@@ -155,7 +155,7 @@ export const sendNewContentEmail = async (email, partnerName, creatorName, conte
                 "${contentTitle}"
               </p>
             </div>
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:5174'}" 
+            <a href="${process.env.FRONTEND_URL || 'https://valentines-surprise-frontend.vercel.app'}" 
                style="display: inline-block; background: linear-gradient(135deg, #B76E79 0%, #A85A67 100%); 
                       color: white; text-decoration: none; padding: 14px 32px; border-radius: 50px;
                       font-size: 14px;">

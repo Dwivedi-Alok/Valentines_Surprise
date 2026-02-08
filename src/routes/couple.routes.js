@@ -81,29 +81,34 @@ router.delete("/", protectRoute, async (req, res) => {
             return res.status(404).json({ error: "No couple found" });
         }
 
-        // Get partner info for notification
+        // Get partner info for notification BEFORE deleting
         const currentUserName = `${req.user.first_name} ${req.user.last_name || ""}`.trim();
+        let partnerEmail = null;
+        let partnerName = null;
 
-        // Send removal email to partner
         if (couple.status === "accepted" && couple.user2) {
             const partner = couple.user1._id.toString() === req.user._id.toString()
                 ? couple.user2
                 : couple.user1;
 
             if (partner && partner.email) {
-                const partnerName = `${partner.first_name} ${partner.last_name || ""}`.trim();
-                await sendPartnerRemovedEmail(partner.email, partnerName, currentUserName);
+                partnerEmail = partner.email;
+                partnerName = `${partner.first_name} ${partner.last_name || ""}`.trim();
             }
         } else if (couple.status === "pending" && couple.invite_email) {
-            // Send to pending invite
-            await sendPartnerRemovedEmail(
-                couple.invite_email,
-                couple.invite_first_name,
-                currentUserName
-            );
+            partnerEmail = couple.invite_email;
+            partnerName = couple.invite_first_name;
         }
 
+        // Delete the couple first (important - don't let email failure block this)
         await Couple.deleteOne({ _id: couple._id });
+
+        // Try to send removal email (non-blocking, don't fail if email fails)
+        if (partnerEmail) {
+            sendPartnerRemovedEmail(partnerEmail, partnerName, currentUserName)
+                .catch(err => console.error("Failed to send partner removal email:", err.message));
+        }
+
         res.json({ message: "Partner removed" });
     } catch (err) {
         res.status(500).json({ error: err.message });
