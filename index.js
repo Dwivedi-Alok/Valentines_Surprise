@@ -1,5 +1,12 @@
 import express from "express";
+import dns from "node:dns";
 import dotenv from "dotenv";
+
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch (error) {
+  console.warn("Could not set default DNS result order:", error);
+}
 import presignedRoutes from "./src/routes/presigned.routes.js";
 import mailRoutes from "./src/routes/mail.routes.js";
 import authRoutes from "./src/routes/auth.routes.js";
