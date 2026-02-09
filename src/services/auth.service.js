@@ -130,7 +130,7 @@ export const sendLoginOtp = async ({ email }) => {
     throw new Error("User not found. Please signup first.");
   }
 
-  const otp = generateOTP();
+  const otp = generateOTP(email);
 
 
   await Otp.deleteMany({ email, type: "login" });
@@ -159,7 +159,7 @@ export const resendOtp = async ({ email, type }) => {
     if (!user) throw new Error("User not found");
   }
 
-  const otp = generateOTP();
+  const otp = generateOTP(email);
 
 
   await Otp.deleteMany({ email, type });
