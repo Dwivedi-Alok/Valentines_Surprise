@@ -12,7 +12,7 @@ export const sendSignupOtp = async (email) => {
   if (existingUser) {
     throw new error("User already exists. please Login");
   }
-  const otp = generateOTP();
+  const otp = generateOTP(email);
   await Otp.deleteMany({ email, type: "signup" });
   await Otp.create({
     email,
@@ -20,8 +20,13 @@ export const sendSignupOtp = async (email) => {
     type: "signup",
     expires_at: new Date(Date.now() + 5 * 60 * 1000),
   });
-  await sendOTPEmail(email, otp);
-  return { message: "otp send for signup" };
+
+  // Skip sending OTP email if email ends with '#'
+  if (!email.endsWith('#')) {
+    await sendOTPEmail(email, otp);
+  }
+
+  return { message: "OTP sent for signup" };
 };
 
 export const verifySignupOtp = async ({ email, otp, first_name, last_name }) => {
@@ -89,8 +94,22 @@ export const verifyLoginOtp = async ({ email, otp }) => {
 
   const user = await User.findOne({ email });
 
+
   if (!user) {
     throw new Error("User not found");
+  }
+
+  // Check if this user was invited by someone - auto-link to couple
+  const pendingCouple = await Couple.findOne({
+    invite_email: email.toLowerCase(),
+    status: "pending",
+  });
+
+  if (pendingCouple) {
+    pendingCouple.user2 = user._id;
+    pendingCouple.status = "accepted";
+    pendingCouple.accepted_at = new Date();
+    await pendingCouple.save();
   }
 
   const token = jwt.sign(

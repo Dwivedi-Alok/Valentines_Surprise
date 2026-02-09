@@ -22,12 +22,12 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import { errorMiddleware } from "./src/middlewares/error.middleware.js";
 import { initCronJobs } from "./src/lib/cron.js";
-
-dotenv.config();
-
 import { createServer } from "http";
 import { Server } from "socket.io";
 import User from "./src/models/user.model.js";
+import { initializeVideoCallService } from "./src/services/videoCall.service.js";
+
+dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
@@ -166,6 +166,9 @@ app.get("/health", async (req, res) => {
 
   res.json(health);
 });
+
+// Initialize Video Call Service
+initializeVideoCallService(io);
 
 httpServer.listen(port, () => {
   connectDB();
