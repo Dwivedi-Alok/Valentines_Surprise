@@ -10,6 +10,7 @@ const router = express.Router();
 router.get("/", protectRoute, async (req, res) => {
     try {
         const couple = await Couple.findByUser(req.user._id);
+        console.log(`[GET /couple] User: ${req.user._id} (${req.user.email}), Found: ${couple ? couple._id : 'null'}`);
 
         if (!couple) {
             return res.json({ couple: null });
@@ -110,6 +111,54 @@ router.delete("/", protectRoute, async (req, res) => {
         }
 
         res.json({ message: "Partner removed" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get pending requests for current user
+router.get("/requests", protectRoute, async (req, res) => {
+    try {
+        const requests = await Couple.find({
+            $or: [{ user2: req.user._id }, { invite_email: req.user.email }],
+            status: "pending"
+        }).populate("user1", "first_name last_name email"); // Populate sender info
+
+        res.json(requests);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Accept a request
+router.post("/accept/:id", protectRoute, async (req, res) => {
+    try {
+        const couple = await Couple.findById(req.params.id);
+
+        if (!couple) {
+            return res.status(404).json({ error: "Request not found" });
+        }
+
+        // Verify this request is for the current user
+        if (couple.user2?.toString() !== req.user._id.toString() && couple.invite_email !== req.user.email) {
+            return res.status(403).json({ error: "Not authorized to accept this request" });
+        }
+
+        // Update status
+        couple.status = "accepted";
+        couple.accepted_at = new Date();
+        couple.user2 = req.user._id; // Ensure user2 is set
+        await couple.save();
+
+        // Optional: Delete other pending requests for this user?
+        // For now, let's keep them or maybe mark them as rejected?
+        // await Couple.deleteMany({
+        //     $or: [{ user2: req.user._id }, { invite_email: req.user.email }],
+        //     status: "pending",
+        //     _id: { $ne: couple._id }
+        // });
+
+        res.json({ message: "Partner request accepted! 💕", couple });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

@@ -40,7 +40,7 @@ export const partnerInviteTemplate = (inviterName, inviteeName) => `
                 </p>
               </div>
 
-              <a href="${process.env.FRONTEND_URL || 'https://valentines-surprise-frontend.vercel.app'}/signup" 
+              <a href="${(process.env.FRONTEND_URL || 'https://valentines-surprise-frontend.vercel.app').replace(/\/$/, '')}/signup" 
                  style="display: inline-block; background: linear-gradient(135deg, #B76E79 0%, #A85A67 100%); 
                         color: white; text-decoration: none; padding: 16px 40px; border-radius: 50px;
                         font-size: 16px; font-weight: 500; letter-spacing: 0.5px;

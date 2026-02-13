@@ -59,8 +59,7 @@ export const verifySignupOtp = async ({ email, otp, first_name, last_name }) => 
 
   if (pendingCouple) {
     pendingCouple.user2 = user._id;
-    pendingCouple.status = "accepted";
-    pendingCouple.accepted_at = new Date();
+    // status remains 'pending'
     await pendingCouple.save();
   }
 
@@ -107,8 +106,7 @@ export const verifyLoginOtp = async ({ email, otp }) => {
 
   if (pendingCouple) {
     pendingCouple.user2 = user._id;
-    pendingCouple.status = "accepted";
-    pendingCouple.accepted_at = new Date();
+    // status remains 'pending'
     await pendingCouple.save();
   }
 
