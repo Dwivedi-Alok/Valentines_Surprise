@@ -36,6 +36,7 @@ router.post("/verify-signup-otp", async (req, res) => {
     res.json({
       message: "Signup successful",
       user,
+      token,
     });
   } catch (err) {
     res.status(400).send(err.message);
@@ -56,6 +57,7 @@ router.post("/verify-login-otp", async (req, res) => {
     res.json({
       message: "Login successful",
       user,
+      token,
     });
   } catch (err) {
     res.status(400).send(err.message);
