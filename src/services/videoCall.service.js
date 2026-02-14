@@ -23,17 +23,31 @@ export const initializeVideoCallService = (socketIoInstance) => {
 
       // Handle offer
       socket.on("offer", ({ offer, targetUserId }) => {
-        socket.to(targetUserId).emit("offer", { offer, senderId: userId });
+        console.log(`[Signaling] Offer from ${userId} to ${targetUserId}`);
+        const result = socket.to(targetUserId).emit("offer", { offer, senderId: userId });
+        console.log(`[Signaling] Offer emit result (to ${targetUserId}):`, result);
       });
 
       // Handle answer
       socket.on("answer", ({ answer, targetUserId }) => {
+        console.log(`[Signaling] Answer from ${userId} to ${targetUserId}`);
         socket.to(targetUserId).emit("answer", { answer, senderId: userId });
       });
 
       // Handle ICE candidates
       socket.on("ice-candidate", ({ candidate, targetUserId }) => {
+        console.log(`[Signaling] ICE from ${userId} to ${targetUserId}`);
         socket.to(targetUserId).emit("ice-candidate", { candidate, senderId: userId });
+      });
+
+      // Debug Ping
+      socket.on("debug_ping", (targetUserId) => {
+        console.log(`[Signaling] Ping from ${userId} to room/user ${targetUserId || 'broadcast'}`);
+        if (targetUserId) {
+          socket.to(targetUserId).emit("debug_ping", userId);
+        } else {
+          socket.to(roomId).emit("debug_ping", userId);
+        }
       });
     });
   });
