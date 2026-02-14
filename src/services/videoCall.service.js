@@ -12,6 +12,7 @@ export const initializeVideoCallService = (socketIoInstance) => {
     socket.on("join-room", ({ roomId, userId }) => {
       console.log(`${userId} joined room: ${roomId}`);
       socket.join(roomId);
+      socket.join(userId); // Join a room with their own ID for direct messages
       socket.to(roomId).emit("user-connected", userId);
 
       // Handle disconnection
