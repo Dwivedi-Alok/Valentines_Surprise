@@ -35,7 +35,8 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "https://valentines-surprise.onrender.com",
-  "https://valentines-surprise-frontend.onrender.com" // Assuming this might be the frontend URL or similar
+  "https://valentines-surprise-frontend.onrender.com",
+  "https://valentines-surprise-frontend.vercel.app"
 ];
 
 const corsOptions = {
